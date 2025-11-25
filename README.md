@@ -4,3 +4,5 @@
 Ir karte, kur ir 2 spawn zonas katram spēlētājam.
 Spēlētājam ir zemē nomests snaiperis, kurš jāsavāc, lai varētu šaut.
 Uzvar tas, kurš nošauj otru spēlētāju
+
+Lai spēlētu, nepieciešams vizard 7.7
