@@ -1,17 +1,16 @@
-﻿import viz, vizcam, vizfx, vizact
+﻿import viz, vizcam, vizfx, vizact, steve
 
 viz.setMultiSample(16)
 viz.fov(90)
 viz.go(viz.FULLSCREEN)
 viz.mouse.setVisible(False)
 
-warehouse = viz.addChild('objects/warehouse.osgb')
+warehouse = vizfx.addChild('objects/warehouse.osgb')
 warehouse.collideMesh()
 viz.MainView.getHeadLight().disable()
-vizfx.addPointLight(pos=[0, 18, 0])
-
-steve = viz.addAvatar('vcc_male.cfg')
-steve.setPosition([20, 2.5, 0])
+vizfx.addDirectionalLight(euler=(0,90,0), pos=(0, 19, 0)).setIntensity(0.2)
+vizfx.addDirectionalLight(euler=(0,45,0), pos=(30, 19, 0)).setIntensity(0.3)
+vizfx.addDirectionalLight(euler=(0,-45,0), pos=(-30, 19, 0)).setIntensity(0.2)
 
 navigator = vizcam.WalkNavigate(moveScale=2)
 viz.cam.setHandler(navigator)
@@ -23,11 +22,11 @@ status_text.setPosition([0.05, 0.95, 0])
 status_text.color(viz.WHITE)
 status_text.fontSize(20)
 
-crosshair = viz.addText('+', viz.SCREEN)
-crosshair.setPosition([0.5, 0.5, 0])
-crosshair.color(viz.GREEN)
-crosshair.alignment(viz.ALIGN_CENTER)
-crosshair.fontSize(30)
+#crosshair = viz.addText('+', viz.SCREEN)
+#crosshair.setPosition([0.5, 0.5, 0])
+#crosshair.color(viz.GREEN)
+#crosshair.alignment(viz.ALIGN_CENTER)
+#crosshair.fontSize(30)
 
 PLAYER_HEIGHT = 1.82
 JUMP_VELOCITY = 7.0
@@ -73,6 +72,6 @@ def update():
 	else:
 		viz.MainView.setPosition([pos[0], ground_height, pos[2]])
 	
-	status_text.message(f"Y: {pos[1]:.2f} | Ground: {on_ground} | Vel: {y_velocity:.2f}")
+	status_text.message(f"X: {pos[0]:.2f} | Y: {pos[1]:.2f} | Z: {pos[2]:.2f} | Ground: {on_ground} | Vel: {y_velocity:.2f}")
 
 vizact.ontimer(0, update)
