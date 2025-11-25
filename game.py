@@ -8,9 +8,8 @@ viz.mouse.setVisible(False)
 warehouse = vizfx.addChild('objects/warehouse.osgb')
 warehouse.collideMesh()
 viz.MainView.getHeadLight().disable()
-vizfx.addDirectionalLight(euler=(0,90,0), pos=(0, 19, 0)).setIntensity(0.2)
-vizfx.addDirectionalLight(euler=(0,45,0), pos=(30, 19, 0)).setIntensity(0.3)
-vizfx.addDirectionalLight(euler=(0,-45,0), pos=(-30, 19, 0)).setIntensity(0.2)
+
+
 
 navigator = vizcam.WalkNavigate(moveScale=2)
 viz.cam.setHandler(navigator)
@@ -22,11 +21,14 @@ status_text.setPosition([0.05, 0.95, 0])
 status_text.color(viz.WHITE)
 status_text.fontSize(20)
 
-#crosshair = viz.addText('+', viz.SCREEN)
-#crosshair.setPosition([0.5, 0.5, 0])
-#crosshair.color(viz.GREEN)
-#crosshair.alignment(viz.ALIGN_CENTER)
-#crosshair.fontSize(30)
+testplayer = steve.Steve()
+testplayer.setPosition(0,4.8,0)
+
+crosshair = viz.addText('+', viz.SCREEN)
+crosshair.setPosition([0.5, 0.5, 0])
+crosshair.color(viz.GREEN)
+crosshair.alignment(viz.ALIGN_CENTER)
+crosshair.fontSize(30)
 
 PLAYER_HEIGHT = 1.82
 JUMP_VELOCITY = 7.0
