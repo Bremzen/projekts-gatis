@@ -159,3 +159,7 @@ if __name__ == '__main__':
 	
 	game = Game(network_manager)
 	game.run()
+	
+light1 = vizfx.addDirectionalLight(euler=(0,90,0)).setPosition(0,18,0)
+light2 = vizfx.addDirectionalLight(euler=(0,90,0)).setPosition(30,18,0)
+light3 = vizfx.addDirectionalLight(euler=(0,90,0)).setPosition(-30,18,0)
