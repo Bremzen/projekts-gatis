@@ -1,8 +1,4 @@
-﻿import viz, vizcam, vizfx, vizact, steve, vizinput
-import platform
-
-class Config:
-	HOST_MACHINE = 'HOST'
+﻿import viz, vizcam, vizfx, vizact, steve, vizinput, platform
 
 class NetworkManager:
 	def __init__(self):
