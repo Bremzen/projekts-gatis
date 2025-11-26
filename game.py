@@ -35,7 +35,9 @@ class GameWorld:
 		viz.MainView.getHeadLight().disable()
 		
 	def setup_lighting(self):
-		pass
+		self.light1 = vizfx.addDirectionalLight(euler=(0,90,0)).setPosition(0,18,0)
+		self.light2 = vizfx.addDirectionalLight(euler=(0,90,0)).setPosition(30,18,0)
+		self.light3 = vizfx.addDirectionalLight(euler=(0,90,0)).setPosition(-30,18,0)
 
 class UI:
 	def __init__(self):
@@ -121,6 +123,7 @@ class Game:
 		viz.mouse.setVisible(False)
 		
 		self.world = GameWorld()
+		self.world.setup_lighting()
 		self.ui = UI()
 		self.player = Player(is_local=True)
 		self.remote_player = Player(is_local=False)
@@ -160,6 +163,3 @@ if __name__ == '__main__':
 	game = Game(network_manager)
 	game.run()
 	
-light1 = vizfx.addDirectionalLight(euler=(0,90,0)).setPosition(0,18,0)
-light2 = vizfx.addDirectionalLight(euler=(0,90,0)).setPosition(30,18,0)
-light3 = vizfx.addDirectionalLight(euler=(0,90,0)).setPosition(-30,18,0)
