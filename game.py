@@ -1,4 +1,5 @@
 ﻿import viz, vizcam, vizfx, vizact, steve, vizinput, platform
+import math
 
 class NetworkManager:
 	def __init__(self):
@@ -65,12 +66,103 @@ class Player:
 		self.y_velocity = 0.0
 		self.is_local = is_local
 		self.avatar = steve.Steve()
+		self.last_shot_time = 0.0  # For shooting cooldown
+		self.shoot_cooldown = 0.2  # 200ms between shots
 		
 		if is_local:
 			self.avatar.setPosition(0, 4.8, 0)
+			# Setup gun for local player
+			self.setup_gun()
 		else:
 			self.matrix = viz.Matrix()
 			self.avatar.setMatrix(self.matrix)
+			self.gun = None
+	
+	def setup_gun(self):
+		"""Setup the gun for local player"""
+		try:
+			# Try to load the gun model
+			self.gun = vizfx.addChild('gun.fbx')
+			self.gun.setParent(viz.MainView)
+			self.gun.setPosition([0.2, -0.2, 0.5])  # Position in front of camera
+			self.gun.setEuler([0, 0, 0])
+			self.gun.setScale([0.5, 0.5, 0.5])  # Make it smaller
+		except:
+			# If gun model doesn't exist, create a simple placeholder using a primitive
+			self.gun = viz.addChild('box.wrl')
+			self.gun.setScale([0.1, 0.05, 0.3])
+			self.gun.color(viz.BLACK)
+			self.gun.setParent(viz.MainView)
+			self.gun.setPosition([0.2, -0.2, 0.5])
+		
+		# Try to load shoot sound
+		try:
+			self.shoot_sound = viz.addAudio('shoot.wav')
+		except:
+			self.shoot_sound = None
+	
+	def shoot(self):
+		"""Perform shooting action"""
+		if not self.is_local:
+			return
+		
+		# Check cooldown
+		current_time = viz.getFrameTime()
+		if current_time - self.last_shot_time < self.shoot_cooldown:
+			return
+		
+		self.last_shot_time = current_time
+		
+		# Play sound if available
+		if self.shoot_sound:
+			self.shoot_sound.play()
+		
+		# Starting point = player head position
+		start = viz.MainView.getPosition()
+		# Direction = where the player is looking
+		direction = viz.MainView.getMatrix().getForward()
+		# Normalize the direction vector manually
+		length = math.sqrt(direction[0]**2 + direction[1]**2 + direction[2]**2)
+		if length > 0:
+			direction = [direction[0]/length, direction[1]/length, direction[2]/length]
+		
+		# End point of the ray (50 units forward)
+		end = [start[0] + direction[0]*50,
+		       start[1] + direction[1]*50,
+		       start[2] + direction[2]*50]
+		
+		# Do the ray test
+		info = viz.intersect(start, end)
+		
+		if info.valid:
+			# Calculate distance manually
+			hit_point = info.point
+			distance = math.sqrt((hit_point[0] - start[0])**2 + 
+			                   (hit_point[1] - start[1])**2 + 
+			                   (hit_point[2] - start[2])**2)
+			print(f"Hit: {info.object} at distance {distance:.2f}")
+			self.create_bullet_impact(info.point)
+		else:
+			print("Shot missed")
+			# Create impact at the end point if nothing was hit
+			self.create_bullet_impact(end)
+	
+	def create_bullet_impact(self, point):
+		"""Create a visual impact effect at the hit point"""
+		try:
+			# Try to create a sphere using basic viz geometry
+			impact = vizshape.addSphere(radius=0.05, color=viz.RED)
+			impact.setScale([0.05, 0.05, 0.05])
+			impact.color(viz.RED)
+		except:
+			# Fallback: create a simple box as impact marker
+			impact = viz.addChild('box.wrl')
+			impact.setScale([0.05, 0.05, 0.05])
+			impact.color(viz.RED)
+		
+		impact.setPosition(point)
+		# Remove the impact after 0.5 seconds
+		vizact.ontimer2(0.5, 0, impact.remove)
 	
 	def get_ground_height(self):
 		pos = viz.MainView.getPosition()
@@ -113,6 +205,9 @@ class Player:
 			self.matrix.setPosition(pos)
 			self.matrix.setQuat(quat)
 
+
+
+
 class Game:
 	def __init__(self, network_manager):
 		self.network_manager = network_manager
@@ -132,8 +227,13 @@ class Game:
 		viz.cam.setHandler(self.navigator)
 		viz.MainView.setPosition(15, 2.5, 0)
 		viz.MainView.collision()
-		
+				
 		self.network_manager.setup_callbacks(self.on_network_event)
+		
+		# Setup shooting controls
+		vizact.onmousedown(viz.MOUSEBUTTON_LEFT, self.player.shoot)
+		vizact.onkeydown('f', self.player.shoot)
+
 	
 	def update(self):
 		x, y, z, on_ground, velocity = self.player.update()
@@ -155,6 +255,10 @@ class Game:
 	def run(self):
 		vizact.ontimer(0, self.update)
 		vizact.ontimer(0, self.send_position)
+		
+
+
+
 
 if __name__ == '__main__':
 
