@@ -66,12 +66,11 @@ class Player:
 		self.y_velocity = 0.0
 		self.is_local = is_local
 		self.avatar = steve.Steve()
-		self.last_shot_time = 0.0  # For shooting cooldown
-		self.shoot_cooldown = 0.2  # 200ms between shots
+		self.last_shot_time = 0.0  
+		self.shoot_cooldown = 2.5  
 		
 		if is_local:
 			self.avatar.setPosition(0, 4.8, 0)
-			# Setup gun for local player
 			self.setup_gun()
 		else:
 			self.matrix = viz.Matrix()
@@ -79,63 +78,58 @@ class Player:
 			self.gun = None
 	
 	def setup_gun(self):
-		"""Setup the gun for local player"""
-		try:
-			# Try to load the gun model
-			self.gun = vizfx.addChild('gun.fbx')
-			self.gun.setParent(viz.MainView)
-			self.gun.setPosition([0.2, -0.2, 0.5])  # Position in front of camera
-			self.gun.setEuler([0, 0, 0])
-			self.gun.setScale([0.5, 0.5, 0.5])  # Make it smaller
-		except:
-			# If gun model doesn't exist, create a simple placeholder using a primitive
-			self.gun = viz.addChild('box.wrl')
-			self.gun.setScale([0.1, 0.05, 0.3])
-			self.gun.color(viz.BLACK)
-			self.gun.setParent(viz.MainView)
-			self.gun.setPosition([0.2, -0.2, 0.5])
+		print("Attempting to create gun...")
 		
-		# Try to load shoot sound
 		try:
-			self.shoot_sound = viz.addAudio('shoot.wav')
+			self.gun = viz.addChild('objects/sniper-rifle.osgb')
+			print("Using sniper rifle model")
 		except:
-			self.shoot_sound = None
+			try:
+				self.gun = viz.addChild('box.wrl')
+				print("Using box.wrl fallback")
+			except:
+				print("All gun models failed!")
+				self.gun = None
+				self.shoot_sound = None
+				return
+		
+		if self.gun:
+			self.gun.setScale([0.6, 0.2, 0.8])  
+			self.gun.color(viz.BLACK)
+			
+			print(f"Gun created in world space")
+			print(f"Gun object: {self.gun}")
+			print(f"Gun visible: {self.gun.getVisible()}")
+			
+		
+		self.shoot_sound = viz.addAudio('shoot.mp3')
 	
 	def shoot(self):
-		"""Perform shooting action"""
 		if not self.is_local:
 			return
 		
-		# Check cooldown
 		current_time = viz.getFrameTime()
 		if current_time - self.last_shot_time < self.shoot_cooldown:
 			return
 		
 		self.last_shot_time = current_time
 		
-		# Play sound if available
 		if self.shoot_sound:
 			self.shoot_sound.play()
 		
-		# Starting point = player head position
 		start = viz.MainView.getPosition()
-		# Direction = where the player is looking
 		direction = viz.MainView.getMatrix().getForward()
-		# Normalize the direction vector manually
 		length = math.sqrt(direction[0]**2 + direction[1]**2 + direction[2]**2)
 		if length > 0:
 			direction = [direction[0]/length, direction[1]/length, direction[2]/length]
 		
-		# End point of the ray (50 units forward)
 		end = [start[0] + direction[0]*50,
 		       start[1] + direction[1]*50,
 		       start[2] + direction[2]*50]
 		
-		# Do the ray test
 		info = viz.intersect(start, end)
 		
 		if info.valid:
-			# Calculate distance manually
 			hit_point = info.point
 			distance = math.sqrt((hit_point[0] - start[0])**2 + 
 			                   (hit_point[1] - start[1])**2 + 
@@ -144,25 +138,20 @@ class Player:
 			self.create_bullet_impact(info.point)
 		else:
 			print("Shot missed")
-			# Create impact at the end point if nothing was hit
 			self.create_bullet_impact(end)
 	
 	def create_bullet_impact(self, point):
-		"""Create a visual impact effect at the hit point"""
 		try:
-			# Try to create a sphere using basic viz geometry
 			impact = vizshape.addSphere(radius=0.05, color=viz.RED)
 			impact.setScale([0.05, 0.05, 0.05])
 			impact.color(viz.RED)
 		except:
-			# Fallback: create a simple box as impact marker
 			impact = viz.addChild('box.wrl')
 			impact.setScale([0.05, 0.05, 0.05])
 			impact.color(viz.RED)
 		
 		impact.setPosition(point)
-		# Remove the impact after 0.5 seconds
-		vizact.ontimer2(0.5, 0, impact.remove)
+		vizact.ontimer2(1, 0, impact.remove)
 	
 	def get_ground_height(self):
 		pos = viz.MainView.getPosition()
@@ -205,9 +194,6 @@ class Player:
 			self.matrix.setPosition(pos)
 			self.matrix.setQuat(quat)
 
-
-
-
 class Game:
 	def __init__(self, network_manager):
 		self.network_manager = network_manager
@@ -230,7 +216,6 @@ class Game:
 				
 		self.network_manager.setup_callbacks(self.on_network_event)
 		
-		# Setup shooting controls
 		vizact.onmousedown(viz.MOUSEBUTTON_LEFT, self.player.shoot)
 		vizact.onkeydown('f', self.player.shoot)
 
@@ -238,6 +223,27 @@ class Game:
 	def update(self):
 		x, y, z, on_ground, velocity = self.player.update()
 		self.ui.update_status(x, y, z, on_ground, velocity)
+		
+		
+		if self.player.gun:
+			cam_pos = viz.MainView.getPosition()
+			cam_euler = viz.MainView.getEuler()
+			
+			
+			import math
+			yaw = math.radians(cam_euler[0])  
+			
+			right_x = math.cos(yaw)
+			right_z = -math.sin(yaw)
+			forward_x = math.sin(yaw)
+			forward_z = math.cos(yaw)
+			
+			gun_pos = [cam_pos[0] + right_x * 0.5 + forward_x * 0.5,
+			          cam_pos[1] - 0.4,
+			          cam_pos[2] + right_z * 0.5 + forward_z * 0.5]
+			
+			self.player.gun.setPosition(gun_pos)
+			self.player.gun.setEuler([cam_euler[0] - 90, cam_euler[1] - 10, cam_euler[2]])
 	
 	def send_position(self):
 		mat = viz.MainView.getMatrix()
@@ -256,10 +262,6 @@ class Game:
 		vizact.ontimer(0, self.update)
 		vizact.ontimer(0, self.send_position)
 		
-
-
-
-
 if __name__ == '__main__':
 
 	network_manager = NetworkManager()
