@@ -52,9 +52,28 @@ class UI:
 		self.crosshair.color(viz.GREEN)
 		self.crosshair.alignment(viz.ALIGN_CENTER)
 		self.crosshair.fontSize(30)
+		
+		# Scoreboard
+		self.scoreboard = viz.addText('', viz.SCREEN)
+		self.scoreboard.setPosition([0.8, 0.95, 0])
+		self.scoreboard.color(viz.YELLOW)
+		self.scoreboard.fontSize(18)
+		self.kills = 0
+		self.deaths = 0
 	
-	def update_status(self, x, y, z, on_ground, velocity):
-		self.status_text.message(f"X: {x:.2f} | Y: {y:.2f} | Z: {z:.2f} | Ground: {on_ground} | Vel: {velocity:.2f}")
+	def update_status(self, x, y, z, on_ground, velocity, health):
+		self.status_text.message(f"X: {x:.2f} | Y: {y:.2f} | Z: {z:.2f} | Ground: {on_ground} | Vel: {velocity:.2f} | Health: {health}")
+		
+	def update_scoreboard(self):
+		self.scoreboard.message(f"Kills: {self.kills} | Deaths: {self.deaths}")
+		
+	def add_kill(self):
+		self.kills += 1
+		self.update_scoreboard()
+		
+	def add_death(self):
+		self.deaths += 1
+		self.update_scoreboard()
 
 class Player:
 	PLAYER_HEIGHT = 1.82
@@ -67,15 +86,22 @@ class Player:
 		self.is_local = is_local
 		self.avatar = steve.Steve()
 		self.last_shot_time = 0.0  
-		self.shoot_cooldown = 2.5  
+		self.shoot_cooldown = 0.5
+		self.health = 100
+		self.is_alive = True
 		
 		if is_local:
 			self.avatar.setPosition(0, 4.8, 0)
 			self.setup_gun()
+			# Hide local player avatar since we're in first person
+			self.avatar.visible(False)
 		else:
+			# Remote player - make avatar visible and position it
+			self.avatar.setPosition(10, 2.5, 10)
+			self.avatar.visible(True)
 			self.matrix = viz.Matrix()
-			self.avatar.setMatrix(self.matrix)
 			self.gun = None
+			print(f"Remote player avatar created at position: {self.avatar.getPosition()}")
 	
 	def setup_gun(self):
 		print("Attempting to create gun...")
@@ -127,15 +153,31 @@ class Player:
 		       start[1] + direction[1]*50,
 		       start[2] + direction[2]*50]
 		
+		# Check if we hit the remote player first
+		from __main__ import game  # Get reference to game instance
+		player_hit = False
+		
+		if hasattr(game, 'remote_player') and game.remote_player.check_hit_by_bullet(start, end):
+			if game.remote_player.take_damage(100):  # 100 damage = instant kill
+				print("You killed the remote player!")
+				game.ui.add_kill()
+				player_hit = True
+		
+		# Then check world collision
 		info = viz.intersect(start, end)
 		
-		if info.valid:
+		if info.valid and not player_hit:
 			hit_point = info.point
 			distance = math.sqrt((hit_point[0] - start[0])**2 + 
 			                   (hit_point[1] - start[1])**2 + 
 			                   (hit_point[2] - start[2])**2)
 			print(f"Hit: {info.object} at distance {distance:.2f}")
 			self.create_bullet_impact(info.point)
+		elif player_hit:
+			# Create impact at player position for visual feedback
+			if hasattr(game, 'remote_player'):
+				player_pos = game.remote_player.avatar.getPosition()
+				self.create_bullet_impact(player_pos)
 		else:
 			print("Shot missed")
 			self.create_bullet_impact(end)
@@ -190,9 +232,88 @@ class Player:
 		return pos[0], pos[1], pos[2], on_ground, self.y_velocity
 	
 	def update_remote_position(self, pos, quat):
-		if not self.is_local and hasattr(self, 'matrix'):
-			self.matrix.setPosition(pos)
-			self.matrix.setQuat(quat)
+		if not self.is_local:
+			# Update avatar position directly so it's visible
+			self.avatar.setPosition(pos)
+			self.avatar.setQuat(quat)
+			self.avatar.visible(True)
+			# Also update matrix for compatibility
+			if hasattr(self, 'matrix'):
+				self.matrix.setPosition(pos)
+				self.matrix.setQuat(quat)
+		
+	def take_damage(self, damage):
+		if not self.is_alive:
+			return False
+			
+		self.health -= damage
+		if self.health <= 0:
+			self.health = 0
+			self.die()
+			return True  # Player died
+		return False  # Player still alive
+		
+	def die(self):
+		self.is_alive = False
+		print("Player died!")
+		# Respawn after 3 seconds
+		vizact.ontimer2(3.0, 0, self.respawn)
+		
+	def respawn(self):
+		self.health = 100
+		self.is_alive = True
+		# Reset position to spawn
+		if self.is_local:
+			viz.MainView.setPosition(15, 2.5, 0)
+		print("Player respawned!")
+		
+	def check_hit_by_bullet(self, bullet_start, bullet_end):
+		"""Check if this player was hit by a bullet line"""
+		if not self.is_alive:
+			return False
+			
+		# Get player position
+		if self.is_local:
+			player_pos = viz.MainView.getPosition()
+		else:
+			player_pos = self.avatar.getPosition()
+		
+		# Simple distance check - if bullet passes close to player
+		import math
+		
+		# Calculate distance from player to bullet line
+		# Using point-to-line distance formula
+		x1, y1, z1 = bullet_start
+		x2, y2, z2 = bullet_end
+		x0, y0, z0 = player_pos
+		
+		# Vector from start to end of bullet
+		line_vec = [x2-x1, y2-y1, z2-z1]
+		line_length = math.sqrt(line_vec[0]**2 + line_vec[1]**2 + line_vec[2]**2)
+		
+		if line_length == 0:
+			return False
+		
+		# Normalize line vector
+		line_vec = [line_vec[0]/line_length, line_vec[1]/line_length, line_vec[2]/line_length]
+		
+		# Vector from bullet start to player
+		to_player = [x0-x1, y0-y1, z0-z1]
+		
+		# Project onto line
+		proj_length = to_player[0]*line_vec[0] + to_player[1]*line_vec[1] + to_player[2]*line_vec[2]
+		
+		# Clamp to line segment
+		proj_length = max(0, min(line_length, proj_length))
+		
+		# Closest point on line
+		closest = [x1 + line_vec[0]*proj_length, y1 + line_vec[1]*proj_length, z1 + line_vec[2]*proj_length]
+		
+		# Distance from player to closest point
+		dist = math.sqrt((x0-closest[0])**2 + (y0-closest[1])**2 + (z0-closest[2])**2)
+		
+		# Hit if within 1 unit (adjust this value for hit detection sensitivity)
+		return dist < 1.0
 
 class Game:
 	def __init__(self, network_manager):
@@ -209,6 +330,9 @@ class Game:
 		self.player = Player(is_local=True)
 		self.remote_player = Player(is_local=False)
 		
+		# Initialize scoreboard
+		self.ui.update_scoreboard()
+		
 		self.navigator = vizcam.WalkNavigate(moveScale=2)
 		viz.cam.setHandler(self.navigator)
 		viz.MainView.setPosition(15, 2.5, 0)
@@ -222,7 +346,7 @@ class Game:
 	
 	def update(self):
 		x, y, z, on_ground, velocity = self.player.update()
-		self.ui.update_status(x, y, z, on_ground, velocity)
+		self.ui.update_status(x, y, z, on_ground, velocity, self.player.health)
 		
 		
 		if self.player.gun:
@@ -267,5 +391,10 @@ if __name__ == '__main__':
 	network_manager = NetworkManager()
 	
 	game = Game(network_manager)
+	
+	# Make game globally accessible for player hit detection
+	import __main__
+	__main__.game = game
+	
 	game.run()
 	
