@@ -1,8 +1,8 @@
-﻿SPĒLES IDEJA:
+﻿SVARĪGA INFORMĀCIJA PRIEKŠ SPĒLĒTĀJA
 
-1 pret 1 snaiperu spēle.
-Ir karte, kur ir 2 spawn zonas katram spēlētājam.
-Spēlētājam ir zemē nomests snaiperis, kurš jāsavāc, lai varētu šaut.
-Uzvar tas, kurš nošauj otru spēlētāju
+Lai spēlētu, vajag 2 datorus, kas ir savienojušies pie viena interneta tīkla
+UZMANĪBU! Ja nevar savienoties, pārbaudi, vai tavs interneta savienojums ļauj savienoties ar citu lietotāju tajā pašā tīklā (P2P). Ja nevar, tad izmanto citu tīklu kā telefona hotspotu.
+
+
 
 Lai spēlētu, nepieciešams vizard 7.7
