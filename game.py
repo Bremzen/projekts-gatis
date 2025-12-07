@@ -1,4 +1,12 @@
-﻿import viz, vizcam, vizfx, vizact, steve, vizinput, platform, math, vizshape
+﻿import viz
+import vizcam
+import vizfx
+import vizact
+import vizshape
+import vizinput
+import steve
+import platform
+import math
 
 class NetworkManager:
 	def __init__(self):
@@ -18,6 +26,9 @@ class NetworkManager:
 	def send(self, **kwargs):
 		if self.target_mailbox:
 			self.target_mailbox.send(**kwargs)
+	
+	def spawn_init(self):
+		return platform.node().upper() > self.target_machine
 	
 	def setup_callbacks(self, on_network_callback):
 		viz.callback(viz.NETWORK_EVENT, on_network_callback)
@@ -47,13 +58,17 @@ class UI:
 		self.crosshair.alignment(viz.ALIGN_CENTER)
 		self.crosshair.fontSize(30)
 		
-		# Scoreboard
 		self.scoreboard = viz.addText('', viz.SCREEN)
 		self.scoreboard.setPosition([0.8, 0.95, 0])
 		self.scoreboard.color(viz.YELLOW)
 		self.scoreboard.fontSize(18)
 		self.kills = 0
 		self.deaths = 0
+		
+		self.death_overlay = viz.addTexQuad(parent=viz.SCREEN, pos=[0.5, 0.5, 0], scale=[20, 20, 1])
+		self.death_overlay.color(viz.RED)
+		self.death_overlay.alpha(0.5)
+		self.death_overlay.visible(False)
 	
 	def update_status(self, x, y, z, on_ground, velocity, health):
 		self.status_text.message(f"X: {x:.2f} | Y: {y:.2f} | Z: {z:.2f} | Ground: {on_ground} | Vel: {velocity:.2f} | Health: {health}")
@@ -68,32 +83,40 @@ class UI:
 	def add_death(self):
 		self.deaths += 1
 		self.update_scoreboard()
+	
+	def show_death_screen(self):
+		self.death_overlay.visible(True)
+	
+	def hide_death_screen(self):
+		self.death_overlay.visible(False)
 
 class Player:
 	PLAYER_HEIGHT = 1.82
 	JUMP_VELOCITY = 7.0
 	GRAVITY = 9.8
 	GROUND_CHECK_DIST = 0.5
-	SPAWN_LOCAL = (55, 4.32, 0)
-	SPAWN_REMOTE = (50, 4.32, 0)
+	SPAWN_ONE = (55, 4.32, 0)
+	SPAWN_TWO = (-55, 4.32, 0)
 	
-	def __init__(self, is_local=True, navigator=None):
+	def __init__(self, is_self=True, navigator=None, win_spawn_roll=None, ui=None, game=None):
 		self.y_velocity = 0.0
-		self.is_local = is_local
+		self.is_self = is_self
 		self.navigator = navigator
+		self.ui = ui
+		self.game = game
 		self.avatar = steve.Steve()
 		self.avatar.setScale([2, 2, 2])
 		self.last_shot_time = 0.0  
 		self.shoot_cooldown = 0.5
 		self.health = 1
 		self.is_alive = True
-		self.spawnpoint = self.SPAWN_LOCAL if self.is_local else self.SPAWN_REMOTE
-		if self.is_local:
+		self.spawnpoint = self.SPAWN_ONE if (is_self == win_spawn_roll) else self.SPAWN_TWO
+		if self.is_self:
 			viz.MainView.setPosition(self.spawnpoint)
 		else:
 			self.avatar.setPosition(self.spawnpoint)
 		
-		if is_local:
+		if is_self:
 			self.setup_gun()
 			self.avatar.visible(False)
 		else:
@@ -101,12 +124,11 @@ class Player:
 			self.gun = None
 	
 	def setup_gun(self):
-
 		self.gun = viz.addChild('objects/sniper-rifle.osgb')
 		self.shoot_sound = viz.addAudio('shoot.mp3')
 	
 	def shoot(self):
-		if not self.is_local:
+		if not self.is_self:
 			return
 		
 		current_time = viz.getFrameTime()
@@ -127,12 +149,10 @@ class Player:
 		       start[1] + direction[1]*50,
 		       start[2] + direction[2]*50]
 		
-		from __main__ import game
-		
-		if game.remote_player.check_hit_by_bullet(start, end):
-			game.remote_player.take_damage(1)
-			game.ui.add_kill()
-			player_pos = game.remote_player.avatar.getPosition()
+		if self.game.remote_player.check_hit_by_bullet(start, end):
+			self.game.remote_player.take_damage(1)
+			self.ui.add_kill()
+			player_pos = self.game.remote_player.avatar.getPosition()
 			self.create_bullet_impact(player_pos)
 		else:
 			info = viz.intersect(start, end)
@@ -153,6 +173,11 @@ class Player:
 		return info.point[1] + self.PLAYER_HEIGHT if info.valid else None
 	
 	def update(self):
+		if not self.is_alive:
+			if hasattr(self, 'death_position'):
+				viz.MainView.setPosition(self.death_position)
+			return self.death_position[0], self.death_position[1], self.death_position[2], 0
+		
 		pos = viz.MainView.getPosition()
 		ground_height = self.get_ground_height()
 		
@@ -182,22 +207,38 @@ class Player:
 		
 	def die(self):
 		self.is_alive = False
-		vizact.ontimer2(0, 0, self.respawn)
-
-		
+		if self.is_self:
+			self.death_position = viz.MainView.getPosition()
+			self.ui.show_death_screen()
+			viz.cam.setHandler(None)
+			self.avatar.visible(True)
+			if self.gun:
+				self.gun.visible(False)
+		else:
+			self.avatar.visible(False)
+		vizact.ontimer2(3, 0, self.respawn)
+	
 	def respawn(self):
 		self.health = 1
 		self.is_alive = True
 		self.y_velocity = 0.0
-		if self.is_local:
-			viz.MainView.setPosition([self.spawnpoint[0], self.spawnpoint[1], self.spawnpoint[2]])
+		if self.is_self:
+			self.ui.hide_death_screen()
+			viz.MainView.setPosition(self.spawnpoint)
+			self.navigator = vizcam.WalkNavigate(moveScale=2)
+			viz.cam.setHandler(self.navigator)
+			self.game.navigator = self.navigator
+			self.avatar.visible(False)
+			if self.gun:
+				self.gun.visible(True)
 		else:
 			self.avatar.setPosition(self.spawnpoint)
+			self.avatar.visible(True)
 		
 	def check_hit_by_bullet(self, bullet_start, bullet_end):
 		if not self.is_alive:
 			return False
-		player_pos = viz.MainView.getPosition() if self.is_local else self.avatar.getPosition()
+		player_pos = viz.MainView.getPosition() if self.is_self else self.avatar.getPosition()
 		half_width, half_height, half_depth = 0.6, 0.91, 0.4
 		box_center = [player_pos[0], player_pos[1] - half_height, player_pos[2]]
 		x1, y1, z1 = bullet_start
@@ -236,8 +277,9 @@ class Game:
 		self.navigator = vizcam.WalkNavigate(moveScale=2)
 		viz.cam.setHandler(self.navigator)
 		
-		self.player = Player(is_local=True, navigator=self.navigator)
-		self.remote_player = Player(is_local=False)
+		spawn_value = network_manager.spawn_init()
+		self.player = Player(is_self=True, navigator=self.navigator, win_spawn_roll=spawn_value, ui=self.ui, game=self)
+		self.remote_player = Player(is_self=False, win_spawn_roll=spawn_value, ui=self.ui, game=self)
 		
 		self.ui.update_scoreboard()
 		
@@ -253,13 +295,11 @@ class Game:
 		x, y, z, velocity = self.player.update()
 		self.ui.update_status(x, y, z, velocity == 0, velocity, self.player.health)
 		
-		
 		if self.player.gun:
 			cam_pos = viz.MainView.getPosition()
 			cam_euler = viz.MainView.getEuler()
 			
-			yaw = math.radians(cam_euler[0])  
-			
+			yaw = math.radians(cam_euler[0])
 			right_x = math.cos(yaw)
 			right_z = -math.sin(yaw)
 			forward_x = math.sin(yaw)
@@ -291,8 +331,4 @@ class Game:
 if __name__ == '__main__':
 	network_manager = NetworkManager()
 	game = Game(network_manager)
-	
-	import __main__
-	__main__.game = game
-	
 	game.run()
