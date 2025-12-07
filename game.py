@@ -74,17 +74,18 @@ class Player:
 	JUMP_VELOCITY = 7.0
 	GRAVITY = 9.8
 	GROUND_CHECK_DIST = 0.5
-	SPAWN_LOCAL = (55, 5, 0)
-	SPAWN_REMOTE = (-55, 5, 0)
+	SPAWN_LOCAL = (55, 4.32, 0)
+	SPAWN_REMOTE = (50, 4.32, 0)
 	
 	def __init__(self, is_local=True, navigator=None):
 		self.y_velocity = 0.0
 		self.is_local = is_local
 		self.navigator = navigator
 		self.avatar = steve.Steve()
+		self.avatar.setScale([2, 2, 2])
 		self.last_shot_time = 0.0  
 		self.shoot_cooldown = 0.5
-		self.health = 100
+		self.health = 1
 		self.is_alive = True
 		self.spawnpoint = self.SPAWN_LOCAL if self.is_local else self.SPAWN_REMOTE
 		if self.is_local:
@@ -100,6 +101,7 @@ class Player:
 			self.gun = None
 	
 	def setup_gun(self):
+
 		self.gun = viz.addChild('objects/sniper-rifle.osgb')
 		self.shoot_sound = viz.addAudio('shoot.mp3')
 	
@@ -128,7 +130,7 @@ class Player:
 		from __main__ import game
 		
 		if game.remote_player.check_hit_by_bullet(start, end):
-			game.remote_player.take_damage(100)
+			game.remote_player.take_damage(1)
 			game.ui.add_kill()
 			player_pos = game.remote_player.avatar.getPosition()
 			self.create_bullet_impact(player_pos)
@@ -150,35 +152,23 @@ class Player:
 		info = viz.intersect([pos[0], feet_y + 0.1, pos[2]], [pos[0], feet_y - self.GROUND_CHECK_DIST, pos[2]])
 		return info.point[1] + self.PLAYER_HEIGHT if info.valid else None
 	
-	def jump(self):
-		if self.y_velocity == 0:
-			self.y_velocity = self.JUMP_VELOCITY
-	
-	def apply_gravity(self, dt):
-		self.y_velocity -= self.GRAVITY * dt
-	
 	def update(self):
 		pos = viz.MainView.getPosition()
 		ground_height = self.get_ground_height()
-		on_ground = ground_height is not None and abs(pos[1] - ground_height) < 0.1
 		
-		if viz.key.isDown(' ') and on_ground:
-			self.jump()
+		if viz.key.isDown(' ') and self.y_velocity == 0:
+			self.y_velocity = self.JUMP_VELOCITY
 		
-		if self.y_velocity != 0 or ground_height is None:
-			dt = viz.getFrameElapsed()
-			self.apply_gravity(dt)
-			new_y = pos[1] + self.y_velocity * dt
-			
-			if ground_height and new_y <= ground_height and self.y_velocity < 0:
-				new_y = ground_height
-				self.y_velocity = 0.0
-			
-			viz.MainView.setPosition([pos[0], new_y, pos[2]])
-		else:
-			viz.MainView.setPosition([pos[0], ground_height, pos[2]])
+		dt = viz.getFrameElapsed()
+		self.y_velocity -= self.GRAVITY * dt
+		new_y = pos[1] + self.y_velocity * dt
 		
-		return pos[0], pos[1], pos[2], on_ground, self.y_velocity
+		if ground_height and new_y <= ground_height and self.y_velocity < 0:
+			new_y = ground_height
+			self.y_velocity = 0.0
+		
+		viz.MainView.setPosition([pos[0], new_y, pos[2]])
+		return pos[0], pos[1], pos[2], self.y_velocity
 	
 	def update_remote_position(self, pos, quat):
 		self.avatar.setPosition(pos)
@@ -193,9 +183,10 @@ class Player:
 	def die(self):
 		self.is_alive = False
 		vizact.ontimer2(0, 0, self.respawn)
+
 		
 	def respawn(self):
-		self.health = 100
+		self.health = 1
 		self.is_alive = True
 		self.y_velocity = 0.0
 		if self.is_local:
@@ -206,36 +197,28 @@ class Player:
 	def check_hit_by_bullet(self, bullet_start, bullet_end):
 		if not self.is_alive:
 			return False
-			
-		if self.is_local:
-			player_pos = viz.MainView.getPosition()
-		else:
-			player_pos = self.avatar.getPosition()
-		
-		
+		player_pos = viz.MainView.getPosition() if self.is_local else self.avatar.getPosition()
+		half_width, half_height, half_depth = 0.6, 0.91, 0.4
+		box_center = [player_pos[0], player_pos[1] - half_height, player_pos[2]]
 		x1, y1, z1 = bullet_start
 		x2, y2, z2 = bullet_end
-		x0, y0, z0 = player_pos
+		dx, dy, dz = x2 - x1, y2 - y1, z2 - z1
 		
-		line_vec = [x2-x1, y2-y1, z2-z1]
-		line_length = math.sqrt(line_vec[0]**2 + line_vec[1]**2 + line_vec[2]**2)
+		def get_t_range(d, v1, center, half_size):
+			if d == 0:
+				return (-float('inf'), float('inf')) if abs(v1 - center) <= half_size else None
+			t1, t2 = (center - half_size - v1) / d, (center + half_size - v1) / d
+			return (min(t1, t2), max(t1, t2))
 		
-		if line_length == 0:
+		ranges = [get_t_range(dx, x1, box_center[0], half_width),
+		          get_t_range(dy, y1, box_center[1], half_height),
+		          get_t_range(dz, z1, box_center[2], half_depth)]
+		
+		if None in ranges:
 			return False
-		
-		line_vec = [line_vec[0]/line_length, line_vec[1]/line_length, line_vec[2]/line_length]
-		
-		to_player = [x0-x1, y0-y1, z0-z1]
-		
-		proj_length = to_player[0]*line_vec[0] + to_player[1]*line_vec[1] + to_player[2]*line_vec[2]
-
-		proj_length = max(0, min(line_length, proj_length))
-
-		closest = [x1 + line_vec[0]*proj_length, y1 + line_vec[1]*proj_length, z1 + line_vec[2]*proj_length]
-
-		dist = math.sqrt((x0-closest[0])**2 + (y0-closest[1])**2 + (z0-closest[2])**2)
-
-		return dist < 1.0
+		t_min = max(r[0] for r in ranges)
+		t_max = min(r[1] for r in ranges)
+		return t_max >= t_min and t_max >= 0 and t_min <= 1
 
 class Game:
 	def __init__(self, network_manager):
@@ -266,10 +249,9 @@ class Game:
 		vizact.onmousedown(viz.MOUSEBUTTON_LEFT, self.player.shoot)
 		vizact.onkeydown('f', self.player.die)
 
-	
 	def update(self):
-		x, y, z, on_ground, velocity = self.player.update()
-		self.ui.update_status(x, y, z, on_ground, velocity, self.player.health)
+		x, y, z, velocity = self.player.update()
+		self.ui.update_status(x, y, z, velocity == 0, velocity, self.player.health)
 		
 		
 		if self.player.gun:
