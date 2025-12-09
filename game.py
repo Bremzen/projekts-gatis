@@ -19,6 +19,7 @@ class NetworkManager:
 
 		while True:
 			self.target_mailbox = viz.addNetwork(self.target_machine)
+			print(self.target_mailbox)
 			if self.target_mailbox != viz.VizNetwork(-1):
 				break
 			print('Neizdevās savienoties. Mēģina vēlreiz.')
@@ -47,11 +48,6 @@ class GameWorld:
 
 class UI:
 	def __init__(self):
-		self.status_text = viz.addText('', viz.SCREEN)
-		self.status_text.setPosition([0.05, 0.95, 0])
-		self.status_text.color(viz.WHITE)
-		self.status_text.fontSize(20)
-		
 		self.crosshair = viz.addText('+', viz.SCREEN)
 		self.crosshair.setPosition([0.5, 0.5, 0])
 		self.crosshair.color(viz.GREEN)
@@ -70,9 +66,6 @@ class UI:
 		self.death_overlay.alpha(0.5)
 		self.death_overlay.visible(False)
 	
-	def update_status(self, x, y, z, on_ground, velocity, health):
-		self.status_text.message(f"X: {x:.2f} | Y: {y:.2f} | Z: {z:.2f} | Ground: {on_ground} | Vel: {velocity:.2f} | Health: {health}")
-		
 	def update_scoreboard(self):
 		self.scoreboard.message(f"Kills: {self.kills} | Deaths: {self.deaths}")
 		
@@ -207,6 +200,7 @@ class Player:
 		
 	def die(self):
 		self.is_alive = False
+		self.ui.add_death()
 		if self.is_self:
 			self.death_position = viz.MainView.getPosition()
 			self.ui.show_death_screen()
@@ -240,7 +234,7 @@ class Player:
 			return False
 		player_pos = viz.MainView.getPosition() if self.is_self else self.avatar.getPosition()
 		half_width, half_height, half_depth = 0.6, 0.91, 0.4
-		box_center = [player_pos[0], player_pos[1] - half_height, player_pos[2]]
+		box_center = [player_pos[0], player_pos[1] , player_pos[2]]
 		x1, y1, z1 = bullet_start
 		x2, y2, z2 = bullet_end
 		dx, dy, dz = x2 - x1, y2 - y1, z2 - z1
@@ -293,7 +287,6 @@ class Game:
 
 	def update(self):
 		x, y, z, velocity = self.player.update()
-		self.ui.update_status(x, y, z, velocity == 0, velocity, self.player.health)
 		
 		if self.player.gun:
 			cam_pos = viz.MainView.getPosition()
