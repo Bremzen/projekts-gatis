@@ -217,25 +217,19 @@ class Player:
 		self.health = 1
 		self.is_alive = True
 		self.y_velocity = 0.0
-		
-		# Reset both players to their spawnpoints
 		if self.is_self:
 			self.ui.hide_death_screen()
-			viz.MainView.setPosition(self.spawnpoint[0], self.spawnpoint[1], self.spawnpoint[2])
+			viz.MainView.setPosition(self.spawnpoint)
 			self.navigator = vizcam.WalkNavigate(moveScale=2)
 			viz.cam.setHandler(self.navigator)
 			self.game.navigator = self.navigator
 			self.avatar.visible(False)
 			if self.gun:
 				self.gun.visible(True)
-			# Reset opponent avatar position
-			self.game.remote_player.avatar.setPosition(self.game.remote_player.spawnpoint[0], self.game.remote_player.spawnpoint[1], self.game.remote_player.spawnpoint[2])
-			self.game.remote_player.avatar.visible(True)
+			self.game.network_manager.send(action='playerRespawn')
 		else:
-			self.avatar.setPosition(self.spawnpoint[0], self.spawnpoint[1], self.spawnpoint[2])
+			self.avatar.setPosition(self.spawnpoint)
 			self.avatar.visible(True)
-			# Reset own player avatar position
-			self.game.player.avatar.setPosition(self.game.player.spawnpoint[0], self.game.player.spawnpoint[1], self.game.player.spawnpoint[2])
 		
 	def check_hit_by_bullet(self, bullet_start, bullet_end):
 		if not self.is_alive:
@@ -327,6 +321,9 @@ class Game:
 				self.remote_player.update_remote_position(e.pos, e.quat)
 			elif e.action == 'playerHit':
 				self.player.take_damage(e.damage)
+			elif e.action == 'playerRespawn':
+				self.remote_player.avatar.visible(True)
+				self.remote_player.avatar.setPosition(self.remote_player.spawnpoint[0], self.remote_player.spawnpoint[1], self.remote_player.spawnpoint[2])
 	
 	def run(self):
 		vizact.ontimer(0, self.update)
