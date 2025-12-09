@@ -143,8 +143,8 @@ class Player:
 		       start[2] + direction[2]*50]
 		
 		if self.game.remote_player.check_hit_by_bullet(start, end):
-			self.game.remote_player.take_damage(1)
 			self.ui.add_kill()
+			self.game.network_manager.send(action='playerHit', damage=1)
 			player_pos = self.game.remote_player.avatar.getPosition()
 			self.create_bullet_impact(player_pos)
 		else:
@@ -314,8 +314,11 @@ class Game:
 		)
 	
 	def on_network_event(self, e):
-		if e.sender.upper() == self.network_manager.target_machine and e.action == 'updatePlayer':
-			self.remote_player.update_remote_position(e.pos, e.quat)
+		if e.sender.upper() == self.network_manager.target_machine:
+			if e.action == 'updatePlayer':
+				self.remote_player.update_remote_position(e.pos, e.quat)
+			elif e.action == 'playerHit':
+				self.player.take_damage(e.damage)
 	
 	def run(self):
 		vizact.ontimer(0, self.update)
