@@ -208,6 +208,7 @@ class Player:
 			self.avatar.visible(True)
 			if self.gun:
 				self.gun.visible(False)
+			self.death_sound = viz.addAudio('death.mp3')
 		else:
 			self.avatar.visible(False)
 		vizact.ontimer2(3, 0, self.respawn)
