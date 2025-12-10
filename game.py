@@ -88,8 +88,8 @@ class Player:
 	JUMP_VELOCITY = 7.0
 	GRAVITY = 9.8
 	GROUND_CHECK_DIST = 0.5
-	SPAWN_ONE = (55, 4.32, 0)
-	SPAWN_TWO = (-55, 4.32, 0)
+	SPAWN_ONE = [55, 4.32, 0]
+	SPAWN_TWO = [-55, 4.32, 0]
 	
 	def __init__(self, is_self=True, navigator=None, win_spawn_roll=None, ui=None, game=None):
 		self.y_velocity = 0.0
@@ -118,10 +118,9 @@ class Player:
 	
 	def setup_gun(self):
 		self.gun = viz.addChild('objects/sniper-rifle.osgb')
-		self.shoot_sound = viz.addAudio('shoot.mp3')
 	
 	def shoot(self):
-		if not self.is_self:
+		if not self.is_self or not self.is_alive:
 			return
 		
 		current_time = viz.getFrameTime()
@@ -168,9 +167,8 @@ class Player:
 	
 	def update(self):
 		if not self.is_alive:
-			if hasattr(self, 'death_position'):
-				viz.MainView.setPosition(self.death_position)
-			return self.death_position[0], self.death_position[1], self.death_position[2], 0
+			viz.MainView.setPosition(self.death_position)
+			viz.MainView.setEuler(self.death_euler)
 		
 		pos = viz.MainView.getPosition()
 		ground_height = self.get_ground_height()
@@ -204,8 +202,9 @@ class Player:
 		self.ui.add_death()
 		if self.is_self:
 			self.death_position = viz.MainView.getPosition()
+			self.death_euler = viz.MainView.getEuler()
 			self.ui.show_death_screen()
-			viz.cam.setHandler(None)
+			self.navigator.moveScale = 0
 			self.avatar.visible(True)
 			if self.gun:
 				self.gun.visible(False)
@@ -216,14 +215,12 @@ class Player:
 	
 	def respawn(self):
 		self.health = 1
-		self.is_alive = True
 		self.y_velocity = 0.0
 		if self.is_self:
 			self.ui.hide_death_screen()
+			self.navigator.moveScale = 2
 			viz.MainView.setPosition(self.spawnpoint)
-			self.navigator = vizcam.WalkNavigate(moveScale=2)
-			viz.cam.setHandler(self.navigator)
-			self.game.navigator = self.navigator
+			viz.MainView.setEuler([0, 0, 0])
 			self.avatar.visible(False)
 			if self.gun:
 				self.gun.visible(True)
@@ -231,6 +228,7 @@ class Player:
 		else:
 			self.avatar.setPosition(self.spawnpoint)
 			self.avatar.visible(True)
+		self.is_alive = True
 		
 	def check_hit_by_bullet(self, bullet_start, bullet_end):
 		if not self.is_alive:
@@ -315,7 +313,6 @@ class Game:
 			pos=mat.getPosition(),
 			quat=mat.getQuat()
 		)
-	
 	def on_network_event(self, e):
 		if e.sender.upper() == self.network_manager.target_machine:
 			if e.action == 'updatePlayer':
