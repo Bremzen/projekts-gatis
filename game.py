@@ -50,9 +50,9 @@ class UI:
 	def __init__(self):
 		self.crosshair = viz.addText('+', viz.SCREEN)
 		self.crosshair.setPosition([0.5, 0.5, 0])
-		self.crosshair.color(viz.GREEN)
+		self.crosshair.color(viz.RED)
 		self.crosshair.alignment(viz.ALIGN_CENTER)
-		self.crosshair.fontSize(30)
+		self.crosshair.fontSize(20)
 		
 		self.scoreboard = viz.addText('', viz.SCREEN)
 		self.scoreboard.setPosition([0.8, 0.95, 0])
@@ -65,6 +65,12 @@ class UI:
 		self.death_overlay.color(viz.RED)
 		self.death_overlay.alpha(0.5)
 		self.death_overlay.visible(False)
+		
+		self.scope_overlay = viz.addTexQuad(parent=viz.SCREEN, pos=[0.5, 0.5, 0], scale=[14, 12, 1])
+		
+		scope_texture = viz.addTexture('textures/scope.png')
+		self.scope_overlay.texture(scope_texture)
+		self.scope_overlay.visible(False)
 	
 	def update_scoreboard(self):
 		self.scoreboard.message(f"Kills: {self.kills} | Deaths: {self.deaths}")
@@ -105,6 +111,8 @@ class Player:
 		self.shoot_cooldown = 1.2
 		self.health = 1
 		self.is_alive = True
+		self.is_zoomed = False
+		self.normal_fov = 90  
 		self.spawnpoint = self.SPAWN_ONE if (is_self == win_spawn_roll) else self.SPAWN_TWO
 		self.spawn_angle = self.SPAWN_ONE_ANGLE if (is_self == win_spawn_roll) else self.SPAWN_TWO_ANGLE
 		if self.is_self:
@@ -159,6 +167,29 @@ class Player:
 			else:
 				self.create_bullet_impact(end)
 	
+	def zoom_in(self):
+		if not self.is_self or not self.is_alive or self.is_zoomed:
+			return
+		
+		zoom_fov = 30  
+		viz.fov(zoom_fov)
+		self.is_zoomed = True
+		if self.ui.scope_overlay:
+			self.gun.visible(False)
+			self.ui.scope_overlay.visible(True)
+			self.ui.crosshair.visible(False)  
+	
+	def zoom_out(self):
+		if not self.is_self or not self.is_alive or not self.is_zoomed:
+			return
+		
+		viz.fov(self.normal_fov)
+		self.is_zoomed = False
+		if self.ui.scope_overlay:
+			self.gun.visible(True)
+			self.ui.scope_overlay.visible(False)
+			self.ui.crosshair.visible(True)
+
 	def create_bullet_impact(self, point):
 		impact = vizshape.addSphere(radius=0.05, color=viz.RED)
 		impact.setPosition(point)
@@ -211,8 +242,7 @@ class Player:
 			self.ui.show_death_screen()
 			self.navigator.moveScale = 0
 			self.avatar.visible(True)
-			if self.gun:
-				self.gun.visible(False)
+			self.gun.visible(False)
 			viz.playSound('sounds/death.mp3')
 		else:
 			self.avatar.visible(False)
@@ -229,8 +259,7 @@ class Player:
 			viz.MainView.setEuler(self.spawn_angle)
 			viz.MainView.collision(viz.ON)
 			self.avatar.visible(False)
-			if self.gun:
-				self.gun.visible(True)
+			self.gun.visible(True)
 			self.game.network_manager.send(action='playerRespawn')
 		else:
 			self.avatar.setPosition(self.spawnpoint)
@@ -293,6 +322,9 @@ class Game:
 		
 		vizact.onmousedown(viz.MOUSEBUTTON_LEFT, self.player.shoot)
 		vizact.onkeydown('f', self.player.die)
+		
+		vizact.onmousedown(viz.MOUSEBUTTON_RIGHT, self.player.zoom_in)
+		vizact.onmouseup(viz.MOUSEBUTTON_RIGHT, self.player.zoom_out)
 
 	def update(self):
 		x, y, z, velocity = self.player.update()
