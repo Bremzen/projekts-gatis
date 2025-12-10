@@ -121,7 +121,7 @@ class Player:
 		self.shoot_sound = viz.addAudio('shoot.mp3')
 	
 	def shoot(self):
-		if not self.is_self:
+		if not self.is_self or not self.is_alive:
 			return
 		
 		current_time = viz.getFrameTime()
@@ -205,7 +205,6 @@ class Player:
 		if self.is_self:
 			self.death_position = viz.MainView.getPosition()
 			self.ui.show_death_screen()
-			viz.cam.setHandler(None)
 			self.avatar.visible(True)
 			if self.gun:
 				self.gun.visible(False)
@@ -220,9 +219,6 @@ class Player:
 		if self.is_self:
 			self.ui.hide_death_screen()
 			viz.MainView.setPosition(self.spawnpoint)
-			self.navigator = vizcam.WalkNavigate(moveScale=2)
-			viz.cam.setHandler(self.navigator)
-			self.game.navigator = self.navigator
 			self.avatar.visible(False)
 			if self.gun:
 				self.gun.visible(True)
@@ -314,7 +310,6 @@ class Game:
 			pos=mat.getPosition(),
 			quat=mat.getQuat()
 		)
-	
 	def on_network_event(self, e):
 		if e.sender.upper() == self.network_manager.target_machine:
 			if e.action == 'updatePlayer':
