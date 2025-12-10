@@ -1,7 +1,27 @@
-﻿##SVARĪGA INFORMĀCIJA PRIEKŠ SPĒLĒTĀJA
+﻿# Snaiperu 1v1 spēle
 
-Vizard 7.7
-Lai spēlētu, vajag 2 datorus, kas ir savienojušies pie viena interneta tīkla
+## Prasības
+- **Vizard 7.7**
+- **2 datori** savienoti vienā lokālā tīklā (P2P savienojums)
 
-UZMANĪBU! Ja nevar savienoties, pārbaudi, vai tavs interneta savienojums ļauj savienoties ar citu lietotāju tajā pašā tīklā (P2P). Ja nevar, tad izmanto citu tīklu kā telefona hotspotu. iPhone hotspots nestrādā.
+## Instalēšana
 
+1. Uzstādi Vizard 7.7 uz abiem datoriem
+2. Nokopē projekta failus uz abiem datoriem
+3. Pārliecinies, ka abi datori ir savienoti vienā Wi-Fi tīklā.
+
+## UZMANĪBU!
+
+Spēle, iespējams, nevarēs izveidot savienojumu ar otru datoru, ja to neatļauj internets (piem. skolas tīkls vai iPhone hotspot).
+
+## Kā Uzsākt Spēli
+
+1. Uzsāk `game.py` uz abiem datoriem
+2. Abi ievada viens otra datora nosaukumu.
+
+## Vadības Kontroles
+
+- **WASD** - Pārvietoties
+- **Peles kustība** - Skatīties apkārt
+- **Space** - Lekt
+- **Peles klikšķis** - Šaut
