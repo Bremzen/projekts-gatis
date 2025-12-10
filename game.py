@@ -137,9 +137,9 @@ class Player:
 		if length > 0:
 			direction = [direction[0]/length, direction[1]/length, direction[2]/length]
 		
-		end = [start[0] + direction[0]*50,
-		       start[1] + direction[1]*50,
-		       start[2] + direction[2]*50]
+		end = [start[0] + direction[0]*500,
+		       start[1] + direction[1]*500,
+		       start[2] + direction[2]*500]
 		
 		if self.game.remote_player.check_hit_by_bullet(start, end):
 			self.ui.add_kill()
