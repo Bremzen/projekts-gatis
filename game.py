@@ -105,6 +105,7 @@ class Player:
 		self.shoot_cooldown = 1.2
 		self.health = 1
 		self.is_alive = True
+		self.spawnpoint = self.SPAWN_ONE if (is_self == win_spawn_roll) else self.SPAWN_TWO
 		self.spawn_angle = self.SPAWN_ONE_ANGLE if (is_self == win_spawn_roll) else self.SPAWN_TWO_ANGLE
 		if self.is_self:
 			viz.MainView.setPosition(self.spawnpoint)
@@ -225,7 +226,7 @@ class Player:
 			self.navigator.moveScale = 2
 			viz.MainView.collision(viz.OFF)
 			viz.MainView.setPosition(self.spawnpoint)
-			viz.MainView.setEuler([0, 0, 0])
+			viz.MainView.setEuler(self.spawn_angle)
 			viz.MainView.collision(viz.ON)
 			self.avatar.visible(False)
 			if self.gun:
@@ -233,6 +234,7 @@ class Player:
 			self.game.network_manager.send(action='playerRespawn')
 		else:
 			self.avatar.setPosition(self.spawnpoint)
+			self.avatar.setEuler(self.spawn_angle)
 			self.avatar.visible(True)
 		self.is_alive = True
 		
