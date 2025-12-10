@@ -223,8 +223,10 @@ class Player:
 		if self.is_self:
 			self.ui.hide_death_screen()
 			self.navigator.moveScale = 2
+			viz.MainView.collision(viz.OFF)
 			viz.MainView.setPosition(self.spawnpoint)
 			viz.MainView.setEuler([0, 0, 0])
+			viz.MainView.collision(viz.ON)
 			self.avatar.visible(False)
 			if self.gun:
 				self.gun.visible(True)
