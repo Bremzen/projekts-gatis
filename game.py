@@ -90,6 +90,8 @@ class Player:
 	GROUND_CHECK_DIST = 0.5
 	SPAWN_ONE = [55, 4.32, 0]
 	SPAWN_TWO = [-55, 4.32, 0]
+	SPAWN_ONE_ANGLE = [-90, 0, 0]  
+	SPAWN_TWO_ANGLE = [90, 0, 0] 
 	
 	def __init__(self, is_self=True, navigator=None, win_spawn_roll=None, ui=None, game=None):
 		self.y_velocity = 0.0
@@ -103,11 +105,13 @@ class Player:
 		self.shoot_cooldown = 1.2
 		self.health = 1
 		self.is_alive = True
-		self.spawnpoint = self.SPAWN_ONE if (is_self == win_spawn_roll) else self.SPAWN_TWO
+		self.spawn_angle = self.SPAWN_ONE_ANGLE if (is_self == win_spawn_roll) else self.SPAWN_TWO_ANGLE
 		if self.is_self:
 			viz.MainView.setPosition(self.spawnpoint)
+			viz.MainView.setEuler(self.spawn_angle)
 		else:
 			self.avatar.setPosition(self.spawnpoint)
+			self.avatar.setEuler(self.spawn_angle)
 		
 		if is_self:
 			self.setup_gun()
