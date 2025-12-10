@@ -100,7 +100,7 @@ class Player:
 		self.avatar = steve.Steve()
 		self.avatar.setScale([2, 2, 2])
 		self.last_shot_time = 0.0  
-		self.shoot_cooldown = 0.5
+		self.shoot_cooldown = 1.2
 		self.health = 1
 		self.is_alive = True
 		self.spawnpoint = self.SPAWN_ONE if (is_self == win_spawn_roll) else self.SPAWN_TWO
@@ -130,7 +130,7 @@ class Player:
 		
 		self.last_shot_time = current_time
 
-		self.shoot_sound.play()
+		viz.playSound('shoot.mp3')
 		
 		start = viz.MainView.getPosition()
 		direction = viz.MainView.getMatrix().getForward()
