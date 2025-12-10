@@ -134,7 +134,7 @@ class Player:
 		
 		self.last_shot_time = current_time
 
-		viz.playSound('shoot.mp3')
+		viz.playSound('sounds/shoot.mp3')
 		
 		start = viz.MainView.getPosition()
 		direction = viz.MainView.getMatrix().getForward()
@@ -213,7 +213,7 @@ class Player:
 			self.avatar.visible(True)
 			if self.gun:
 				self.gun.visible(False)
-			viz.playSound('death.mp3')
+			viz.playSound('sounds/death.mp3')
 		else:
 			self.avatar.visible(False)
 		vizact.ontimer2(3, 0, self.respawn)
