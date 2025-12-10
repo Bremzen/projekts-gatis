@@ -24,4 +24,5 @@ Spēle, iespējams, nevarēs izveidot savienojumu ar otru datoru, ja to neatļau
 - **WASD** - Pārvietoties
 - **Peles kustība** - Skatīties apkārt
 - **Space** - Lekt
-- **Peles klikšķis** - Šaut
+- **Peles kreisais klikšķis** - Šaut
+- **Peles labais klikšķis** - Tēmēt
